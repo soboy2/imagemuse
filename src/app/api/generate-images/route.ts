@@ -8,11 +8,12 @@ const openai = new OpenAI({
 
 // Configure route options for Vercel
 export const config = {
-  runtime: 'edge', // Use Edge runtime for better performance
   maxDuration: 60, // Set maximum duration to 60 seconds
 };
 
 export async function POST(request: Request) {
+  console.log("API route called with OpenAI key configured:", !!process.env.OPENAI_API_KEY);
+  
   try {
     // Check if API key is configured
     if (!process.env.OPENAI_API_KEY) {
@@ -29,41 +30,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    // Generate images one at a time instead of in parallel to avoid rate limits
-    const imageUrls = [];
-    
-    for (let i = 0; i < 4; i++) {
-      try {
-        const enhancedPrompt = `${prompt}${i > 0 ? ` (variation ${i})` : ''}`;
-        
-        const response = await openai.images.generate({
-          model: "dall-e-3",
-          prompt: enhancedPrompt,
-          n: 1,
-          size: "1024x1024",
-        });
-        
-        if (response.data && response.data[0] && response.data[0].url) {
-          imageUrls.push(response.data[0].url);
-        }
-      } catch (imageError: any) {
-        console.error(`Error generating image ${i}:`, imageError);
-        // Continue with other images even if one fails
-      }
-    }
+    console.log("Generating image for prompt:", prompt);
 
-    if (imageUrls.length === 0) {
+    // Generate just one image to reduce timeout risk
+    try {
+      const response = await openai.images.generate({
+        model: "dall-e-3",
+        prompt: prompt,
+        n: 1,
+        size: "1024x1024",
+      });
+      
+      console.log("Image generated successfully");
+      
+      if (response.data && response.data[0] && response.data[0].url) {
+        // Return just the one image for now to avoid timeouts
+        return NextResponse.json({ imageUrls: [response.data[0].url] });
+      } else {
+        throw new Error('No image URL in response');
+      }
+    } catch (imageError: any) {
+      console.error(`Error generating image:`, imageError);
       return NextResponse.json(
-        { error: 'Failed to generate any images' },
+        { error: imageError.message || 'Failed to generate image' },
         { status: 500 }
       );
     }
-
-    return NextResponse.json({ imageUrls });
   } catch (error: any) {
-    console.error('Error generating images:', error);
+    console.error('Error in API route:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to generate images' },
+      { error: error.message || 'Failed to process request' },
       { status: 500 }
     );
   }

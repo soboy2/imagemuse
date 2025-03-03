@@ -1,11 +1,23 @@
 {
   "version": 2,
   "functions": {
-    "api/generate-images/*.ts": {
-      "memory": 1024,
+    "api/generate-images/**": {
+      "memory": 3008,
       "maxDuration": 60
     }
   },
+  "routes": [
+    {
+      "src": "/api/generate-images",
+      "dest": "/api/generate-images",
+      "methods": ["POST"],
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type"
+      }
+    }
+  ],
   "env": {
     "OPENAI_API_KEY": "@openai_api_key"
   },

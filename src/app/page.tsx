@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Download, Copy, Check, AlertCircle } from "lucide-react";
+import { Download, Copy, Check, AlertCircle, Loader2 } from "lucide-react";
 
 export default function Home() {
   const [prompt, setPrompt] = useState("");
@@ -9,39 +9,45 @@ export default function Home() {
   const [copySuccess, setCopySuccess] = useState<number | null>(null);
   const [downloadSuccess, setDownloadSuccess] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && prompt.trim()) {
-      setIsLoading(true);
-      setImages([]);
-      setError(null);
-      
-      try {
-        const response = await fetch('/api/generate-images', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ prompt }),
-        });
+  const handleSubmit = async (e: React.KeyboardEvent<HTMLInputElement> | React.MouseEvent<HTMLButtonElement>) => {
+    if ((e.type === 'keydown' && (e as React.KeyboardEvent).key !== 'Enter') || !prompt.trim()) {
+      return;
+    }
+    
+    setIsLoading(true);
+    setImages([]);
+    setError(null);
+    setStatusMessage("Generating your image... This may take up to 30 seconds");
+    
+    try {
+      const response = await fetch('/api/generate-images', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt }),
+      });
 
-        const data = await response.json();
+      const data = await response.json();
 
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to generate images');
-        }
-
-        if (!data.imageUrls || data.imageUrls.length === 0) {
-          throw new Error('No images were generated');
-        }
-
-        setImages(data.imageUrls);
-      } catch (error: any) {
-        console.error('Error generating images:', error);
-        setError(error.message || 'An unexpected error occurred');
-      } finally {
-        setIsLoading(false);
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate images');
       }
+
+      if (!data.imageUrls || data.imageUrls.length === 0) {
+        throw new Error('No images were generated');
+      }
+
+      setImages(data.imageUrls);
+      setStatusMessage(null);
+    } catch (error: any) {
+      console.error('Error generating images:', error);
+      setError(error.message || 'An unexpected error occurred');
+      setStatusMessage(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -94,19 +100,36 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white">
       <nav className="bg-slate-600 text-white p-4">
-        <h1 className="text-xl font-semibold">Home</h1>
+        <h1 className="text-xl font-semibold">ImageMuse</h1>
       </nav>
 
       <main className="container mx-auto p-8 space-y-6">
         <div className="w-full max-w-2xl mx-auto">
-          <input
-            type="text"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={handleSubmit}
-            placeholder="Describe image here"
-            className="w-full p-4 rounded-lg border-2 border-blue-700 bg-blue-50 focus:outline-none focus:border-blue-800 text-gray-700"
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSubmit(e)}
+              placeholder="Describe image here"
+              className="w-full p-4 rounded-lg border-2 border-blue-700 bg-blue-50 focus:outline-none focus:border-blue-800 text-gray-700"
+              disabled={isLoading}
+            />
+            <button
+              onClick={handleSubmit}
+              disabled={isLoading || !prompt.trim()}
+              className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Generate'}
+            </button>
+          </div>
+          
+          {statusMessage && (
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center text-blue-700">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              <span>{statusMessage}</span>
+            </div>
+          )}
           
           {error && (
             <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center text-red-700">
@@ -116,11 +139,11 @@ export default function Home() {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-4 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
           {images.length > 0 && images.map((imageUrl, index) => (
             <div
               key={index}
-              className="aspect-video bg-slate-100 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden relative group"
+              className="aspect-square bg-slate-100 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden relative group"
             >
               <img 
                 src={imageUrl} 
@@ -155,14 +178,11 @@ export default function Home() {
               </div>
             </div>
           ))}
-          {isLoading && [...Array(4)].map((_, index) => (
-            <div
-              key={index}
-              className="aspect-video bg-slate-100 rounded-lg shadow-sm animate-pulse"
-            >
-              <div className="h-full w-full bg-gradient-to-r from-slate-200 to-slate-300 blur-sm" />
+          {isLoading && (
+            <div className="aspect-square bg-slate-100 rounded-lg shadow-sm animate-pulse flex items-center justify-center">
+              <Loader2 className="h-12 w-12 text-blue-700 animate-spin" />
             </div>
-          ))}
+          )}
         </div>
       </main>
     </div>
