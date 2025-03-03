@@ -6,10 +6,9 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Configure route options for Vercel
-export const config = {
-  maxDuration: 60, // Set maximum duration to 60 seconds
-};
+// Configure route options for Vercel using the new route segment config format
+export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   console.log("API route called with OpenAI key configured:", !!process.env.OPENAI_API_KEY);
