@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "api/generate-images/**": {
-      "memory": 3008,
+      "memory": 1024,
       "maxDuration": 60
     }
   },
@@ -19,7 +19,8 @@
     }
   ],
   "env": {
-    "OPENAI_API_KEY": "@openai_api_key"
+    "OPENAI_API_KEY": "@openai_api_key",
+    "USE_DALLE_2": "true"
   },
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
