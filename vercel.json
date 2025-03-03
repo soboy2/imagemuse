@@ -10,7 +10,7 @@
     {
       "src": "/api/generate-images",
       "dest": "/api/generate-images",
-      "methods": ["POST"],
+      "methods": ["POST", "OPTIONS"],
       "headers": {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS",

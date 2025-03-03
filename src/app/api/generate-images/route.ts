@@ -30,29 +30,79 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    console.log("Generating image for prompt:", prompt);
+    console.log("Generating images for prompt:", prompt);
 
-    // Generate just one image to reduce timeout risk
+    // Generate 4 images
     try {
-      const response = await openai.images.generate({
-        model: "dall-e-3",
-        prompt: prompt,
-        n: 1,
-        size: "1024x1024",
-      });
+      // Note: DALL-E 3 only supports n=1, so we'll make multiple requests
+      // For DALL-E 2, we could use n=4 in a single request
+      const imageUrls = [];
       
-      console.log("Image generated successfully");
-      
-      if (response.data && response.data[0] && response.data[0].url) {
-        // Return just the one image for now to avoid timeouts
-        return NextResponse.json({ imageUrls: [response.data[0].url] });
+      // For DALL-E 3, we need to make 4 separate requests
+      if (process.env.USE_DALLE_2 === 'true') {
+        // DALL-E 2 approach (single request with n=4)
+        const response = await openai.images.generate({
+          model: "dall-e-2",
+          prompt: prompt,
+          n: 4,
+          size: "1024x1024",
+        });
+        
+        if (response.data) {
+          imageUrls.push(...response.data.map(item => item.url).filter(Boolean));
+        }
       } else {
-        throw new Error('No image URL in response');
+        // DALL-E 3 approach (4 separate requests)
+        // Make the first request
+        const response1 = await openai.images.generate({
+          model: "dall-e-3",
+          prompt: prompt,
+          n: 1,
+          size: "1024x1024",
+        });
+        
+        if (response1.data && response1.data[0] && response1.data[0].url) {
+          imageUrls.push(response1.data[0].url);
+        }
+        
+        // Make three more requests with slight variations to the prompt
+        // This helps ensure we get different images
+        const variations = [
+          "Alternative version: " + prompt,
+          "Different style: " + prompt,
+          "Another interpretation: " + prompt
+        ];
+        
+        for (const variationPrompt of variations) {
+          try {
+            const responseVariation = await openai.images.generate({
+              model: "dall-e-3",
+              prompt: variationPrompt,
+              n: 1,
+              size: "1024x1024",
+            });
+            
+            if (responseVariation.data && responseVariation.data[0] && responseVariation.data[0].url) {
+              imageUrls.push(responseVariation.data[0].url);
+            }
+          } catch (variationError) {
+            console.error(`Error generating variation image:`, variationError);
+            // Continue with other variations even if one fails
+          }
+        }
+      }
+      
+      console.log(`Generated ${imageUrls.length} images successfully`);
+      
+      if (imageUrls.length > 0) {
+        return NextResponse.json({ imageUrls });
+      } else {
+        throw new Error('No image URLs in response');
       }
     } catch (imageError: any) {
-      console.error(`Error generating image:`, imageError);
+      console.error(`Error generating images:`, imageError);
       return NextResponse.json(
-        { error: imageError.message || 'Failed to generate image' },
+        { error: imageError.message || 'Failed to generate images' },
         { status: 500 }
       );
     }
