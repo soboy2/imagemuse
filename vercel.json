@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "functions": {
+    "api/generate-images/*.ts": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  },
+  "env": {
+    "OPENAI_API_KEY": "@openai_api_key"
+  },
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install"
+} 

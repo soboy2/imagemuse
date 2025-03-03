@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Download, Copy, Check } from "lucide-react";
+import { Download, Copy, Check, AlertCircle } from "lucide-react";
 
 export default function Home() {
   const [prompt, setPrompt] = useState("");
@@ -8,11 +8,13 @@ export default function Home() {
   const [images, setImages] = useState<string[]>([]);
   const [copySuccess, setCopySuccess] = useState<number | null>(null);
   const [downloadSuccess, setDownloadSuccess] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && prompt.trim()) {
       setIsLoading(true);
       setImages([]);
+      setError(null);
       
       try {
         const response = await fetch('/api/generate-images', {
@@ -23,15 +25,20 @@ export default function Home() {
           body: JSON.stringify({ prompt }),
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-          throw new Error('Failed to generate images');
+          throw new Error(data.error || 'Failed to generate images');
         }
 
-        const data = await response.json();
+        if (!data.imageUrls || data.imageUrls.length === 0) {
+          throw new Error('No images were generated');
+        }
+
         setImages(data.imageUrls);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error generating images:', error);
-        // You could add error handling UI here
+        setError(error.message || 'An unexpected error occurred');
       } finally {
         setIsLoading(false);
       }
@@ -100,6 +107,13 @@ export default function Home() {
             placeholder="Describe image here"
             className="w-full p-4 rounded-lg border-2 border-blue-700 bg-blue-50 focus:outline-none focus:border-blue-800 text-gray-700"
           />
+          
+          {error && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center text-red-700">
+              <AlertCircle className="mr-2 h-5 w-5" />
+              <span>{error}</span>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4 max-w-4xl mx-auto">
