@@ -19,7 +19,6 @@
     }
   ],
   "env": {
-    "OPENAI_API_KEY": "@openai_api_key",
     "USE_DALLE_2": "true"
   },
   "buildCommand": "npm run build",
